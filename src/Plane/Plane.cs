@@ -46,6 +46,7 @@ public class Plane
             return;
 
         _logger.Add(Logging.LogSource.Tracker, evt.ToString(), PlaneName);
+        _statistics.Feed(PlaneName, evt);
 
         HandleEvent(evt);
     }
@@ -66,6 +67,7 @@ public class Plane
 
     readonly string _planeName;
     readonly Logging.FlowLogger _logger = Logging.FlowLogger.Instance;
+    readonly Logging.Statistics _statistics = Logging.Statistics.Instance;
 
     protected virtual void HandleIntersection(Intersection intersection) { }
     protected virtual void HandleEvent(Event evt) { }

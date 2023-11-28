@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualBasic;
 using Richa.Logging;
+using Richa.Utils;
 using System;
 using System.Collections.Generic;
 using System.Runtime.ConstrainedExecution;
@@ -66,7 +67,11 @@ namespace Richa
             if (_logger.HasRecords)
             {
                 _logger.IsEnabled = false;
-                _logger.SaveTo($"richa_{DateTime.Now:u}.txt".ToPath());
+                var timestamp = $"{DateTime.Now:u}";
+                if (_logger.SaveTo($"richa_{timestamp}.txt".ToPath()) == SavingResult.Save)
+                {
+                    Logging.Statistics.Instance.SaveTo($"richa_{timestamp}_stat.txt".ToPath());
+                }
             }
         }
 

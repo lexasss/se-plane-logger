@@ -40,6 +40,7 @@ public class FlowLogger : Logger<FlowLogger.Record>
     public bool IsEnabled { get; set; } = true;
 
     public bool HasRecords => _records.Count > 0;
+    public string Folder => _folder;
 
     public void Add(LogSource source, string type, params string[] data)
     {

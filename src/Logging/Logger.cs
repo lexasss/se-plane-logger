@@ -60,7 +60,7 @@ public abstract class Logger<T> where T : class
 
     protected abstract string Header { get; }
 
-    string _folder;
+    protected string _folder;
 
 
     protected Logger()
