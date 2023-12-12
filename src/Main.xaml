@@ -12,6 +12,8 @@
       Loaded="Page_Loaded">
 
     <Page.Resources>
+        <local:InvertConverter x:Key="invert"/>
+        
         <Style TargetType="CheckBox">
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
@@ -75,7 +77,7 @@
             </Setter>
         </Style>
     </Page.Resources>
-    
+
     <Grid>
         <TabControl Padding="18">
             <TabItem Header="Control">
@@ -85,38 +87,70 @@
                         <RowDefinition/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="60"/>
                         <ColumnDefinition/>
                         <ColumnDefinition/>
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Row="0" Grid.Column="0"
-                            Content="Manual"
-                            Tag="DrivingStage"
-                            Click="ControlButton_Click"/>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="Driving stage"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0"
+                               Text="Task"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               VerticalAlignment="Center"/>
+
                     <Button Grid.Row="0" Grid.Column="1"
-                            Content="Critical"
-                            Tag="DrivingStage"
-                            Click="ControlButton_Click"/>
+                            Background="#cceeff"
+                            Content="Manual"
+                            Tag="{Binding Source={x:Static local:ButtonClass.DrivingStage}, Mode=OneWay}"
+                            Click="ControlButton_Click">
+                    </Button>
+                    <Label Grid.Row="0" Grid.Column="1" x:Name="lblManualDrivingDurationLeft"
+                           Visibility="Hidden"
+                           Background="Black"
+                           Foreground="White"
+                           FontSize="20"
+                           Margin="12"
+                           HorizontalContentAlignment="Center"
+                           VerticalContentAlignment="Center"/>
+
                     <Button Grid.Row="0" Grid.Column="2"
-                            Content="NonCritical"
-                            Tag="DrivingStage"
+                            Background="#cceeff"
+                            Content="Critical"
+                            Tag="{Binding Source={x:Static local:ButtonClass.DrivingStage}, Mode=OneWay}"
                             Click="ControlButton_Click"/>
-                    <Button Grid.Row="1" Grid.Column="0"
-                            Content="Started"
-                            Tag="Task"
+                    <Button Grid.Row="0" Grid.Column="3"
+                            Background="#cceeff"
+                            Content="NonCritical"
+                            Tag="{Binding Source={x:Static local:ButtonClass.DrivingStage}, Mode=OneWay}"
                             Click="ControlButton_Click"/>
                     <Button Grid.Row="1" Grid.Column="1"
-                            Content="Completed"
-                            Tag="Task"
-                            Click="ControlButton_Click"/>
+                            Background="#ccffcc"
+                            Content="Start"
+                            IsEnabled="{Binding IsDriverBusyWithTask, Converter={StaticResource invert}, Mode=OneWay}"
+                            Tag="{Binding Source={x:Static local:ButtonClass.Task}, Mode=OneWay}"
+                            Click="ControlButton_Click" Margin="12,9,12,15"/>
                     <Button Grid.Row="1" Grid.Column="2"
+                            Background="#ccffcc"
+                            Content="Complete"
+                            IsEnabled="{Binding IsDriverBusyWithTask}"
+                            Tag="{Binding Source={x:Static local:ButtonClass.Task}, Mode=OneWay}"
+                            Click="ControlButton_Click"/>
+                    <Button Grid.Row="1" Grid.Column="3"
+                            Background="Pink"
+                            Content="Finish"
                             x:Name="btnFinished"
-                            Content="Finished"
-                            Tag="DrivingStage"
+                            Tag="{Binding Source={x:Static local:ButtonClass.DrivingStage}, Mode=OneWay}"
                             Click="ControlButton_Click"/>
                 </Grid>
             </TabItem>
-            <TabItem Header="Log">
+            <TabItem Header="Log" Visibility="Collapsed">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -133,7 +167,7 @@
                              Text="Output: "/>
                 </Grid>
             </TabItem>
-            <TabItem Header="World">
+            <TabItem Header="Gaze">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="177*"/>

@@ -70,7 +70,7 @@ namespace Richa
                 return;
             }
 
-            if (txbHost.Text.Split('.').Where(p => byte.TryParse(p, out byte value) && value > 0 && value < 255).Count() != 4)
+            if (txbHost.Text.Split('.').Where(p => byte.TryParse(p, out byte _)).Count() != 4)
             {
                 MessageBox.Show("IP is not valid", Application.Current.MainWindow.Title, MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
