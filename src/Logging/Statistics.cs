@@ -44,9 +44,9 @@ internal class Statistics
             var p = item.Key.Split('_');
             var (planeName, drivingStage, focus) = (p[0], p[1], bool.Parse(p[2]) ? "task" : "road");
             return $"{drivingStage}\t{focus}\t{planeName}\t{item.Value.TotalTime}";
-        }).ToImmutableSortedSet();
+        });
 
-        return Save(filename, lines);
+        return Save(filename, lines.ToImmutableSortedSet());
     }
 
     // Internal methods

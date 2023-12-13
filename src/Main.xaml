@@ -107,7 +107,7 @@
 
                     <Button Grid.Row="0" Grid.Column="1"
                             Background="#cceeff"
-                            Content="Manual"
+                            Content="{Binding Source={x:Static local:DrivingStage.Manual}, Mode=OneWay}"
                             Tag="{Binding Source={x:Static local:ButtonClass.DrivingStage}, Mode=OneWay}"
                             Click="ControlButton_Click">
                     </Button>
@@ -122,12 +122,12 @@
 
                     <Button Grid.Row="0" Grid.Column="2"
                             Background="#cceeff"
-                            Content="Critical"
+                            Content="{Binding Source={x:Static local:DrivingStage.Critical}, Mode=OneWay}"
                             Tag="{Binding Source={x:Static local:ButtonClass.DrivingStage}, Mode=OneWay}"
                             Click="ControlButton_Click"/>
                     <Button Grid.Row="0" Grid.Column="3"
                             Background="#cceeff"
-                            Content="NonCritical"
+                            Content="{Binding Source={x:Static local:DrivingStage.NonCritical}, Mode=OneWay}"
                             Tag="{Binding Source={x:Static local:ButtonClass.DrivingStage}, Mode=OneWay}"
                             Click="ControlButton_Click"/>
                     <Button Grid.Row="1" Grid.Column="1"

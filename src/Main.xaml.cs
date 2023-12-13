@@ -9,206 +9,212 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
 
-namespace Richa
+namespace Richa;
+
+public static class ButtonClass
 {
-    public static class ButtonClass
+    public static readonly string DrivingStage = "DrivingStage";
+    public static readonly string Task = "Task";
+}
+public static class DrivingStage
+{
+    public static readonly string Manual = "Manual";
+    public static readonly string Critical = "Critical";
+    public static readonly string NonCritical = "NonCritical";
+}
+
+
+public class InvertConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
     {
-        public static readonly string DrivingStage = "DrivingStage";
-        public static readonly string Task = "Task";
+        return !(bool)value;
     }
 
-    public class InvertConverter : IValueConverter
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
     {
-        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            return !(bool)value;
-        }
+        throw new NotImplementedException();
+    }
+}
 
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+public partial class Main : Page, IDisposable, INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public bool IsDriverBusyWithTask
+    {
+        get => _isDriverBusyWithTask;
+        set
         {
-            throw new NotImplementedException();
+            _isDriverBusyWithTask = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDriverBusyWithTask)));
         }
     }
 
-    public partial class Main : Page, IDisposable, INotifyPropertyChanged
+    public Main(SEClient.Tcp.Client? tcpClient)
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
+        InitializeComponent();
 
-        public bool IsDriverBusyWithTask
+        DataContext = this;
+
+        _tcpClient = tcpClient;
+
+        if (_tcpClient != null)
         {
-            get => _isDriverBusyWithTask;
-            set
+            _tcpClient.Disconnected += DataSource_Closed;
+            _tcpClient.Sample += TcpClient_Sample;
+        }
+
+        ScreenLogger.Initialize(txbOutput, wrpScreenLogger);
+
+        _handler = new PlaneIntersectionHander(new Dictionary<Panel, Plane.Plane>()
+        {
+            { stpWindshield, new Plane.Plane("Windshield") },
+            { stpLeftMirror, new Plane.Plane("LeftMirror") },
+            { stpLeftDashboard, new Plane.Plane("LeftDashboard") },
+            { stpRearView, new Plane.Plane("RearView") },
+            { stpCentralConsole, new Plane.Plane("CentralConsole") },
+            { stpRightMirror, new Plane.Plane("RightMirror") },
+        });
+
+        btnFinished.Click += Stop_Click;
+    }
+
+    public void Finalize()
+    {
+        SaveLoggedData();
+
+        if (_tcpClient?.IsConnected ?? false)
+        {
+            _tcpClient.Stop();
+        }
+    }
+
+    public void Dispose()
+    {
+        _tcpClient?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    // Internal
+
+    readonly SEClient.Tcp.Client? _tcpClient;
+    readonly PlaneIntersectionHander _handler;
+
+    readonly FlowLogger _logger = FlowLogger.Instance;
+    readonly Statistics _statistics = Statistics.Instance;
+
+    bool _isDriverBusyWithTask = false;
+
+    private void SaveLoggedData()
+    {
+        if (_logger.HasRecords)
+        {
+            _logger.IsEnabled = false;
+            var timestamp = $"{DateTime.Now:u}";
+            if (_logger.SaveTo($"richa_{timestamp}.txt".ToPath()) == SavingResult.Save)
             {
-                _isDriverBusyWithTask = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDriverBusyWithTask)));
+                _statistics.SaveTo($"richa_{timestamp}_stat.txt".ToPath());
             }
         }
+    }
 
-        public Main(SEClient.Tcp.Client? tcpClient)
+    private void ShowManualDrivingTimer()
+    {
+        string ToTime(long seconds) => $"{seconds / 60:00}:{seconds % 60:00}";
+
+        long manualDrivingDuration = 60*5; // seconds
+        int tickInterval = 200;
+        long endsAt = DateTime.Now.Ticks + manualDrivingDuration * 10_000_000;
+        var timer = new Timer(tickInterval)
         {
-            InitializeComponent();
-
-            DataContext = this;
-
-            _tcpClient = tcpClient;
-
-            if (_tcpClient != null)
-            {
-                _tcpClient.Disconnected += DataSource_Closed;
-                _tcpClient.Sample += TcpClient_Sample;
-            }
-
-            ScreenLogger.Initialize(txbOutput, wrpScreenLogger);
-
-            _handler = new PlaneIntersectionHander(new Dictionary<Panel, Plane.Plane>()
-            {
-                { stpWindshield, new Plane.Plane("Windshield") },
-                { stpLeftMirror, new Plane.Plane("LeftMirror") },
-                { stpLeftDashboard, new Plane.Plane("LeftDashboard") },
-                { stpRearView, new Plane.Plane("RearView") },
-                { stpCentralConsole, new Plane.Plane("CentralConsole") },
-                { stpRightMirror, new Plane.Plane("RightMirror") },
-            });
-
-            btnFinished.Click += Stop_Click;
-        }
-
-        public void Finalize()
+            AutoReset = true
+        };
+        timer.Elapsed += (s, e) =>
         {
-            SaveLoggedData();
-
-            if (_tcpClient?.IsConnected ?? false)
+            var leftSeconds = (int)((endsAt - DateTime.Now.Ticks) / 10_000_000);
+            if (DateTime.Now.Ticks >= endsAt)
             {
-                _tcpClient.Stop();
-            }
-        }
-
-        public void Dispose()
-        {
-            _tcpClient?.Dispose();
-            GC.SuppressFinalize(this);
-        }
-
-        // Internal
-
-        readonly SEClient.Tcp.Client? _tcpClient;
-        readonly PlaneIntersectionHander _handler;
-
-        readonly FlowLogger _logger = FlowLogger.Instance;
-        readonly Statistics _statistics = Statistics.Instance;
-
-        bool _isDriverBusyWithTask = false;
-
-        private void SaveLoggedData()
-        {
-            if (_logger.HasRecords)
-            {
-                _logger.IsEnabled = false;
-                var timestamp = $"{DateTime.Now:u}";
-                if (_logger.SaveTo($"richa_{timestamp}.txt".ToPath()) == SavingResult.Save)
-                {
-                    _statistics.SaveTo($"richa_{timestamp}_stat.txt".ToPath());
-                }
-            }
-        }
-
-        private void ShowManualDrivingTimer()
-        {
-            string ToTime(long seconds) => $"{seconds / 60:00}:{seconds % 60:00}";
-
-            long manualDrivingDuration = 60*5; // seconds
-            int tickInterval = 200;
-            long endsAt = DateTime.Now.Ticks + manualDrivingDuration * 10_000_000;
-            var timer = new Timer(tickInterval)
-            {
-                AutoReset = true
-            };
-            timer.Elapsed += (s, e) =>
-            {
-                var leftSeconds = (int)((endsAt - DateTime.Now.Ticks) / 10_000_000);
-                if (DateTime.Now.Ticks >= endsAt)
-                {
-                    System.Media.SystemSounds.Beep.Play();
-                    Dispatcher.Invoke(() =>
-                    {
-                        lblManualDrivingDurationLeft.Visibility = Visibility.Hidden;
-                    });
-                    timer.Stop();
-                }
-                else
-                {
-                    Dispatcher.Invoke(() => lblManualDrivingDurationLeft.Content = ToTime(leftSeconds));
-                }
-            };
-            timer.Start();
-
-            lblManualDrivingDurationLeft.Content = ToTime(manualDrivingDuration);
-            lblManualDrivingDurationLeft.Visibility = Visibility.Visible;
-        }
-
-        // Handlers
-
-        private void DataSource_Closed(object? sender, EventArgs e)
-        {
-            try
-            {
-                Dispatcher.Invoke(SaveLoggedData);
-            }
-            catch (TaskCanceledException) { }
-        }
-
-        private void TcpClient_Sample(object? sender, SEClient.Tcp.Data.Sample sample)
-        {
-            try
-            {
+                System.Media.SystemSounds.Beep.Play();
                 Dispatcher.Invoke(() =>
                 {
-                    _handler.Feed(sample);
+                    lblManualDrivingDurationLeft.Visibility = Visibility.Hidden;
                 });
+                timer.Stop();
             }
-            catch (TaskCanceledException) { }
-        }
-
-        // UI
-
-        private void Page_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (App.IsDebugging)
+            else
             {
-                lblDebug.Visibility = Visibility.Visible;
+                Dispatcher.Invoke(() => lblManualDrivingDurationLeft.Content = ToTime(leftSeconds));
             }
-        }
+        };
+        timer.Start();
 
-        private void ControlButton_Click(object sender, RoutedEventArgs e)
+        lblManualDrivingDurationLeft.Content = ToTime(manualDrivingDuration);
+        lblManualDrivingDurationLeft.Visibility = Visibility.Visible;
+    }
+
+    // Handlers
+
+    private void DataSource_Closed(object? sender, EventArgs e)
+    {
+        try
         {
-            Button btn = (sender as Button)!;
-            var buttonClass = btn.Tag.ToString()!;
-            var data = btn.Content.ToString()!;
-            _logger.Add(LogSource.Driver, buttonClass, data);
-
-            if (buttonClass == ButtonClass.DrivingStage)
-            {
-                btn.IsEnabled = false;
-                var drivingStage = data;
-                _statistics.SetStage(drivingStage);
-
-                if (data == "Manual")
-                {
-                    ShowManualDrivingTimer();
-                }
-            }
-            else if (buttonClass == ButtonClass.Task)
-            {
-                IsDriverBusyWithTask = !IsDriverBusyWithTask;
-                _statistics.SetStage(IsDriverBusyWithTask);
-            }
+            Dispatcher.Invoke(SaveLoggedData);
         }
+        catch (TaskCanceledException) { }
+    }
 
-        private void Stop_Click(object? _, RoutedEventArgs e)
+    private void TcpClient_Sample(object? sender, SEClient.Tcp.Data.Sample sample)
+    {
+        try
         {
-            _handler.Reset();
-            Finalize();
-            Application.Current.Shutdown();
+            Dispatcher.Invoke(() =>
+            {
+                _handler.Feed(sample);
+            });
         }
+        catch (TaskCanceledException) { }
+    }
+
+    // UI
+
+    private void Page_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (App.IsDebugging)
+        {
+            lblDebug.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void ControlButton_Click(object sender, RoutedEventArgs e)
+    {
+        Button btn = (sender as Button)!;
+        var buttonClass = btn.Tag.ToString()!;
+        var data = btn.Content.ToString()!;
+        _logger.Add(LogSource.Driver, buttonClass, data);
+
+        if (buttonClass == ButtonClass.DrivingStage)
+        {
+            btn.IsEnabled = false;
+            var drivingStage = data;
+            _statistics.SetStage(drivingStage);
+
+            if (data == DrivingStage.Manual)
+            {
+                ShowManualDrivingTimer();
+            }
+        }
+        else if (buttonClass == ButtonClass.Task)
+        {
+            IsDriverBusyWithTask = !IsDriverBusyWithTask;
+            _statistics.SetStage(IsDriverBusyWithTask);
+        }
+    }
+
+    private void Stop_Click(object? _, RoutedEventArgs e)
+    {
+        _handler.Reset();
+        Finalize();
+        Application.Current.Shutdown();
     }
 }
