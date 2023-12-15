@@ -12,14 +12,21 @@ internal class Statistics
 {
     public static Statistics Instance => _instance ??= new();
 
-    public void SetStage(string drivingStage, bool isDriverBusyWithTask)
+    public void SetStage(string drivingStage)
     {
         _drivingStage = drivingStage;
-        _isDriverBusyWithTask = isDriverBusyWithTask;
+        _stageTimestamps.Add(drivingStage, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 0.001);
     }
 
-    public void SetStage(string drivingStage) => _drivingStage = drivingStage;
-    public void SetStage(bool isDriverBusyWIthTask) => _isDriverBusyWithTask = isDriverBusyWIthTask;
+    public void SetStage(bool isDriverBusyWithTask)
+    {
+        _isDriverBusyWithTask = isDriverBusyWithTask;
+        if (isDriverBusyWithTask)
+        {
+            _taskId++;
+        }
+        _stageTimestamps.Add(isDriverBusyWithTask ? $"task{_taskId}_start" : $"task{_taskId}_end", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 0.001);
+    }
 
     public void Feed(string name, Plane.Plane.Event evt)
     {
@@ -39,14 +46,17 @@ internal class Statistics
 
     public bool SaveTo(string filename)
     {
-        var lines = _planes.Select(item =>
+        var stages = _stageTimestamps.Select(item => $"{item.Key}\t{item.Value}");
+
+        var attention = _planes.Select(item =>
         {
             var p = item.Key.Split('_');
             var (planeName, drivingStage, focus) = (p[0], p[1], bool.Parse(p[2]) ? "task" : "road");
             return $"{drivingStage}\t{focus}\t{planeName}\t{item.Value.TotalTime}";
         });
 
-        return Save(filename, lines.ToImmutableSortedSet());
+        var data = string.Join("\n", stages).Replace(',', '.') + "\n\n" + string.Join("\n", attention.ToImmutableSortedSet());
+        return Save(filename, data);
     }
 
     // Internal methods
@@ -77,12 +87,14 @@ internal class Statistics
     static Statistics? _instance = null;
 
     Dictionary<string, Entry> _planes = new();
+    Dictionary<string, double> _stageTimestamps = new();
     string? _drivingStage = null;
     bool _isDriverBusyWithTask = false;
+    int _taskId = 0;
 
     private string MakePlaneKey(string name) => $"{name}_{_drivingStage}_{_isDriverBusyWithTask}";
 
-    private static bool Save(string filename, IEnumerable<object> records, string header = "")
+    private static bool Save(string filename, string data, string header = "")
     {
         if (!Path.IsPathFullyQualified(filename))
         {
@@ -105,7 +117,7 @@ internal class Statistics
                 writer.WriteLine(header);
             }
 
-            writer.WriteLine(string.Join("\n", records));
+            writer.WriteLine(data);
             return true;
         }
         catch (Exception ex)
